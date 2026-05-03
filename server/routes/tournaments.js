@@ -5,12 +5,18 @@ const auth = require('../middleware/auth');
 
 router.get('/', auth, async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const { sport_id, level } = req.query;
+    let query = `
       SELECT t.*, s.sport_name
       FROM TOURNAMENT t
       LEFT JOIN SPORT s ON t.sport_id = s.sport_id
-      ORDER BY t.tournament_id DESC
-    `);
+      WHERE 1=1
+    `;
+    const params = [];
+    if (sport_id) { query += ' AND t.sport_id = ?'; params.push(sport_id); }
+    if (level) { query += ' AND t.tournament_level = ?'; params.push(level); }
+    query += ' ORDER BY t.tournament_id DESC';
+    const [rows] = await pool.query(query, params);
     res.json(rows);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });

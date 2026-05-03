@@ -4,21 +4,27 @@ import { Plus, Trash2, Edit, Tv, Search } from 'lucide-react';
 
 export default function Broadcasters() {
   const [broadcasters, setBroadcasters] = useState([]);
+  const [sports, setSports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSport, setSelectedSport] = useState('');
   
   // Form State
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ broadcaster_id: null, broadcaster_name: '', country: '', contact_email: '' });
+  const [formData, setFormData] = useState({ broadcaster_id: null, broadcaster_name: '', country: '', contact_email: '', sport_id: '' });
 
   useEffect(() => {
-    fetchData();
+    api.get('/sports').then(res => setSports(res.data)).catch(console.error);
   }, []);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    fetchBroadcasters();
+  }, [selectedSport]);
+
+  const fetchBroadcasters = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/broadcasters');
+      const res = await api.get(`/broadcasters${selectedSport ? `?sport_id=${selectedSport}` : ''}`);
       setBroadcasters(res.data);
     } catch (err) {
       console.error(err);
@@ -36,8 +42,8 @@ export default function Broadcasters() {
         await api.post('/broadcasters', formData);
       }
       setShowForm(false);
-      setFormData({ broadcaster_id: null, broadcaster_name: '', country: '', contact_email: '' });
-      fetchData();
+      setFormData({ broadcaster_id: null, broadcaster_name: '', country: '', contact_email: '', sport_id: '' });
+      fetchBroadcasters();
     } catch (err) {
       console.error(err);
     }
@@ -47,7 +53,7 @@ export default function Broadcasters() {
     if (!window.confirm('Are you sure? This will delete all channels associated too.')) return;
     try {
       await api.delete(`/broadcasters/${id}`);
-      fetchData();
+      fetchBroadcasters();
     } catch (err) {
       console.error(err);
     }
@@ -74,7 +80,7 @@ export default function Broadcasters() {
             />
           </div>
           <button 
-            onClick={() => { setShowForm(true); setFormData({ broadcaster_id: null, broadcaster_name: '', country: '', contact_email: '' }); }}
+            onClick={() => { setShowForm(true); setFormData({ broadcaster_id: null, broadcaster_name: '', country: '', contact_email: '', sport_id: selectedSport }); }}
             className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center transition-colors shadow-lg shadow-purple-500/20 shrink-0"
           >
             <Plus className="h-5 w-5 mr-2" />
@@ -83,10 +89,29 @@ export default function Broadcasters() {
         </div>
       </div>
 
+      {/* Sport Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <button
+          onClick={() => setSelectedSport('')}
+          className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium ${selectedSport === '' ? 'bg-purple-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+        >
+          All Sports
+        </button>
+        {sports.map(s => (
+          <button
+            key={s.sport_id}
+            onClick={() => setSelectedSport(s.sport_id)}
+            className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium ${selectedSport === s.sport_id ? 'bg-purple-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+          >
+            {s.sport_name}
+          </button>
+        ))}
+      </div>
+
       {showForm && (
         <div className="glass p-6 rounded-2xl animate-in fade-in slide-in-from-top-4 border-purple-500/20">
           <h2 className="text-xl font-bold mb-4">{formData.broadcaster_id ? 'Edit' : 'Add'} Broadcaster</h2>
-          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Name</label>
               <input type="text" required value={formData.broadcaster_name} onChange={e => setFormData({...formData, broadcaster_name: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 outline-none" />
@@ -99,7 +124,14 @@ export default function Broadcasters() {
               <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
               <input type="email" value={formData.contact_email} onChange={e => setFormData({...formData, contact_email: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 outline-none" />
             </div>
-            <div className="md:col-span-3 flex justify-end gap-3 mt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Primary Sport</label>
+              <select value={formData.sport_id} onChange={e => setFormData({...formData, sport_id: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 outline-none text-white">
+                <option value="">Any Sport</option>
+                {sports.map(s => <option key={s.sport_id} value={s.sport_id}>{s.sport_name}</option>)}
+              </select>
+            </div>
+            <div className="md:col-span-4 flex justify-end gap-3 mt-2">
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg border border-white/10 hover:bg-white/5 transition-colors">Cancel</button>
               <button type="submit" className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-colors">Save</button>
             </div>

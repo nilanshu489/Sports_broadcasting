@@ -2,29 +2,48 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Search, Plus, Trash2, Edit } from 'lucide-react';
 
+const SPORT_ROLES_BY_NAME = {
+  'Cricket': ['Batsman', 'Bowler', 'All-rounder', 'Wicketkeeper'],
+  'Football': ['Forward', 'Midfielder', 'Defender', 'Goalkeeper'],
+  'Basketball': ['Guard', 'Forward', 'Center'],
+  'Baseball': ['Pitcher', 'Catcher', 'First Baseman', 'Second Baseman', 'Third Baseman', 'Shortstop', 'Outfielder', 'Designated Hitter']
+};
+
 export default function Players() {
   const [players, setPlayers] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [sports, setSports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSport, setSelectedSport] = useState('');
   
   // Form State
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ player_id: null, player_name: '', role: '', nationality: '', team_id: '' });
+  const [formData, setFormData] = useState({ player_id: null, player_name: '', role: '', nationality: '', team_ids: [], sport_id: '' });
 
   useEffect(() => {
-    fetchData();
+    const fetchInitialData = async () => {
+      try {
+        const [teamsRes, sportsRes] = await Promise.all([
+          api.get('/teams'),
+          api.get('/sports')
+        ]);
+        setTeams(teamsRes.data);
+        setSports(sportsRes.data);
+      } catch (err) { console.error(err); }
+    };
+    fetchInitialData();
   }, []);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    fetchPlayers();
+  }, [selectedSport]);
+
+  const fetchPlayers = async () => {
     setLoading(true);
     try {
-      const [playersRes, teamsRes] = await Promise.all([
-        api.get('/players'),
-        api.get('/teams')
-      ]);
-      setPlayers(playersRes.data);
-      setTeams(teamsRes.data);
+      const res = await api.get(`/players${selectedSport ? `?sport_id=${selectedSport}` : ''}`);
+      setPlayers(res.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -41,8 +60,8 @@ export default function Players() {
         await api.post('/players', formData);
       }
       setShowForm(false);
-      setFormData({ player_id: null, player_name: '', role: '', nationality: '', team_id: '' });
-      fetchData();
+      setFormData({ player_id: null, player_name: '', role: '', nationality: '', team_ids: [], sport_id: '' });
+      fetchPlayers();
     } catch (err) {
       console.error(err);
     }
@@ -52,7 +71,7 @@ export default function Players() {
     if (!window.confirm('Are you sure you want to delete this player?')) return;
     try {
       await api.delete(`/players/${id}`);
-      fetchData();
+      fetchPlayers();
     } catch (err) {
       console.error(err);
     }
@@ -62,6 +81,17 @@ export default function Players() {
     p.player_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (p.team_name && p.team_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const toggleTeam = (teamId) => {
+    setFormData(prev => {
+      const isSelected = prev.team_ids.includes(teamId);
+      if (isSelected) {
+        return { ...prev, team_ids: prev.team_ids.filter(id => id !== teamId) };
+      } else {
+        return { ...prev, team_ids: [...prev.team_ids, teamId] };
+      }
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -79,13 +109,32 @@ export default function Players() {
             />
           </div>
           <button 
-            onClick={() => { setShowForm(true); setFormData({ player_id: null, player_name: '', role: '', nationality: '', team_id: '' }); }}
+            onClick={() => { setShowForm(true); setFormData({ player_id: null, player_name: '', role: '', nationality: '', team_ids: [], sport_id: selectedSport }); }}
             className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg flex items-center transition-colors shrink-0"
           >
             <Plus className="h-5 w-5 mr-2" />
             Add Player
           </button>
         </div>
+      </div>
+
+      {/* Sport Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <button
+          onClick={() => setSelectedSport('')}
+          className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium ${selectedSport === '' ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+        >
+          All Sports
+        </button>
+        {sports.map(s => (
+          <button
+            key={s.sport_id}
+            onClick={() => setSelectedSport(s.sport_id)}
+            className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium ${selectedSport === s.sport_id ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+          >
+            {s.sport_name}
+          </button>
+        ))}
       </div>
 
       {showForm && (
@@ -98,18 +147,49 @@ export default function Players() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Role</label>
-              <input type="text" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary outline-none" placeholder="e.g. Forward, Bowler" />
+              {formData.sport_id ? (
+                <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary outline-none text-white">
+                  <option value="">Select Role</option>
+                  {(sports.find(s => s.sport_id == formData.sport_id) && SPORT_ROLES_BY_NAME[sports.find(s => s.sport_id == formData.sport_id).sport_name])?.map(role => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              ) : (
+                <select disabled className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 opacity-50 outline-none text-gray-500">
+                  <option>Select a Sport First</option>
+                </select>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Nationality</label>
               <input type="text" value={formData.nationality} onChange={e => setFormData({...formData, nationality: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary outline-none" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Team</label>
-              <select value={formData.team_id} onChange={e => setFormData({...formData, team_id: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary outline-none text-white">
-                <option value="">No Team</option>
-                {teams.map(t => <option key={t.team_id} value={t.team_id}>{t.team_name}</option>)}
+              <label className="block text-sm font-medium text-gray-400 mb-1">Sport</label>
+              <select value={formData.sport_id} onChange={e => setFormData({...formData, sport_id: e.target.value, role: ''})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary outline-none text-white">
+                <option value="">Select Sport</option>
+                {sports.map(s => <option key={s.sport_id} value={s.sport_id}>{s.sport_name}</option>)}
               </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-400 mb-2">Teams</label>
+              <div className="bg-surface border border-white/10 rounded-lg p-3 max-h-40 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {teams.filter(t => !formData.sport_id || t.sport_id == formData.sport_id).length === 0 ? (
+                  <div className="text-gray-500 text-sm">No teams available for this sport.</div>
+                ) : (
+                  teams.filter(t => !formData.sport_id || t.sport_id == formData.sport_id).map(t => (
+                    <label key={t.team_id} className="flex items-center space-x-2 cursor-pointer text-sm">
+                      <input 
+                        type="checkbox" 
+                        checked={formData.team_ids.includes(t.team_id)}
+                        onChange={() => toggleTeam(t.team_id)}
+                        className="rounded border-white/20 bg-black/20 text-primary focus:ring-primary focus:ring-offset-gray-900"
+                      />
+                      <span>{t.team_name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
             </div>
             <div className="md:col-span-2 flex justify-end gap-3 mt-2">
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg border border-white/10 hover:bg-white/5 transition-colors">Cancel</button>
@@ -149,7 +229,7 @@ export default function Players() {
                       )}
                     </td>
                     <td className="py-3 px-4 flex justify-end gap-2">
-                      <button onClick={() => { setFormData({...player, team_id: player.team_id || ''}); setShowForm(true); }} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors" title="Edit">
+                      <button onClick={() => { setFormData({...player, team_ids: player.team_ids || []}); setShowForm(true); }} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors" title="Edit">
                         <Edit className="h-4 w-4" />
                       </button>
                       <button onClick={() => handleDelete(player.player_id)} className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors" title="Delete">

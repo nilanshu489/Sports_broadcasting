@@ -4,21 +4,27 @@ import { Search, Plus, Trash2, Edit } from 'lucide-react';
 
 export default function Stadiums() {
   const [stadiums, setStadiums] = useState([]);
+  const [sports, setSports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSport, setSelectedSport] = useState('');
   
   // Form State
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ stadium_id: null, stadium_name: '', city: '', capacity: '' });
+  const [formData, setFormData] = useState({ stadium_id: null, stadium_name: '', city: '', capacity: '', sport_id: '' });
 
   useEffect(() => {
-    fetchData();
+    api.get('/sports').then(res => setSports(res.data)).catch(console.error);
   }, []);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    fetchStadiums();
+  }, [selectedSport]);
+
+  const fetchStadiums = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/stadiums');
+      const res = await api.get(`/stadiums${selectedSport ? `?sport_id=${selectedSport}` : ''}`);
       setStadiums(res.data);
     } catch (err) {
       console.error(err);
@@ -36,8 +42,8 @@ export default function Stadiums() {
         await api.post('/stadiums', formData);
       }
       setShowForm(false);
-      setFormData({ stadium_id: null, stadium_name: '', city: '', capacity: '' });
-      fetchData();
+      setFormData({ stadium_id: null, stadium_name: '', city: '', capacity: '', sport_id: '' });
+      fetchStadiums();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || 'Error saving stadium');
@@ -48,7 +54,7 @@ export default function Stadiums() {
     if (!window.confirm('Are you sure you want to delete this stadium?')) return;
     try {
       await api.delete(`/stadiums/${id}`);
-      fetchData();
+      fetchStadiums();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || 'Error deleting stadium');
@@ -76,7 +82,7 @@ export default function Stadiums() {
             />
           </div>
           <button 
-            onClick={() => { setShowForm(true); setFormData({ stadium_id: null, stadium_name: '', city: '', capacity: '' }); }}
+            onClick={() => { setShowForm(true); setFormData({ stadium_id: null, stadium_name: '', city: '', capacity: '', sport_id: selectedSport }); }}
             className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center transition-colors shadow-lg shadow-indigo-500/20 shrink-0"
           >
             <Plus className="h-5 w-5 mr-2" />
@@ -85,10 +91,29 @@ export default function Stadiums() {
         </div>
       </div>
 
+      {/* Sport Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <button
+          onClick={() => setSelectedSport('')}
+          className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium ${selectedSport === '' ? 'bg-indigo-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+        >
+          All Sports
+        </button>
+        {sports.map(s => (
+          <button
+            key={s.sport_id}
+            onClick={() => setSelectedSport(s.sport_id)}
+            className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium ${selectedSport === s.sport_id ? 'bg-indigo-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+          >
+            {s.sport_name}
+          </button>
+        ))}
+      </div>
+
       {showForm && (
         <div className="glass p-6 rounded-2xl animate-in fade-in slide-in-from-top-4 border-indigo-500/20">
           <h2 className="text-xl font-bold mb-4">{formData.stadium_id ? 'Edit Stadium' : 'Add New Stadium'}</h2>
-          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Stadium Name</label>
               <input type="text" required value={formData.stadium_name} onChange={e => setFormData({...formData, stadium_name: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
@@ -101,7 +126,14 @@ export default function Stadiums() {
               <label className="block text-sm font-medium text-gray-400 mb-1">Capacity</label>
               <input type="number" value={formData.capacity} onChange={e => setFormData({...formData, capacity: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
             </div>
-            <div className="md:col-span-3 flex justify-end gap-3 mt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Primary Sport</label>
+              <select value={formData.sport_id} onChange={e => setFormData({...formData, sport_id: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none text-white">
+                <option value="">Any Sport</option>
+                {sports.map(s => <option key={s.sport_id} value={s.sport_id}>{s.sport_name}</option>)}
+              </select>
+            </div>
+            <div className="md:col-span-4 flex justify-end gap-3 mt-2">
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg border border-white/10 hover:bg-white/5 transition-colors">Cancel</button>
               <button type="submit" className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg transition-colors">Save</button>
             </div>

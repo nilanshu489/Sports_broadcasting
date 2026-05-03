@@ -4,21 +4,46 @@ import { Search, Plus, Trash2, Edit } from 'lucide-react';
 
 export default function Teams() {
   const [teams, setTeams] = useState([]);
+  const [sports, setSports] = useState([]);
+  const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Filter States
+  const [selectedSport, setSelectedSport] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState(''); // 'International', 'National', 'Franchise'
+  const [selectedTournament, setSelectedTournament] = useState('');
+  
   // Form State
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ team_id: null, team_name: '', home_city: '', coach_name: '' });
+  const [formData, setFormData] = useState({ team_id: null, team_name: '', home_city: '', coach_name: '', sport_id: '', team_level: 'Franchise', tournament_id: '' });
 
   useEffect(() => {
-    fetchData();
+    const fetchInitialData = async () => {
+      try {
+        const [sportsRes, tourneysRes] = await Promise.all([
+          api.get('/sports'),
+          api.get('/tournaments')
+        ]);
+        setSports(sportsRes.data);
+        setTournaments(tourneysRes.data);
+      } catch (err) { console.error(err); }
+    };
+    fetchInitialData();
   }, []);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    fetchTeams();
+  }, [selectedSport, selectedLevel, selectedTournament]);
+
+  const fetchTeams = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/teams');
+      let url = '/teams?';
+      if (selectedSport) url += `sport_id=${selectedSport}&`;
+      if (selectedLevel) url += `team_level=${selectedLevel}&`;
+      if (selectedLevel === 'Franchise' && selectedTournament) url += `tournament_id=${selectedTournament}`;
+      const res = await api.get(url);
       setTeams(res.data);
     } catch (err) {
       console.error(err);
@@ -36,8 +61,8 @@ export default function Teams() {
         await api.post('/teams', formData);
       }
       setShowForm(false);
-      setFormData({ team_id: null, team_name: '', home_city: '', coach_name: '' });
-      fetchData();
+      setFormData({ team_id: null, team_name: '', home_city: '', coach_name: '', sport_id: '', team_level: 'Franchise', tournament_id: '' });
+      fetchTeams();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || 'Error saving team');
@@ -48,7 +73,7 @@ export default function Teams() {
     if (!window.confirm('Are you sure you want to delete this team?')) return;
     try {
       await api.delete(`/teams/${id}`);
-      fetchData();
+      fetchTeams();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || 'Error deleting team');
@@ -76,13 +101,52 @@ export default function Teams() {
             />
           </div>
           <button 
-            onClick={() => { setShowForm(true); setFormData({ team_id: null, team_name: '', home_city: '', coach_name: '' }); }}
+            onClick={() => { setShowForm(true); setFormData({ team_id: null, team_name: '', home_city: '', coach_name: '', sport_id: selectedSport, team_level: selectedLevel || 'Franchise', tournament_id: selectedTournament }); }}
             className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center transition-colors shadow-lg shadow-emerald-500/20 shrink-0"
           >
             <Plus className="h-5 w-5 mr-2" />
             Add Team
           </button>
         </div>
+      </div>
+
+      {/* Filters Hierarchy */}
+      <div className="space-y-4 bg-white/5 p-4 rounded-xl border border-white/10">
+        {/* Sport Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <button onClick={() => setSelectedSport('')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors text-sm font-medium ${selectedSport === '' ? 'bg-emerald-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}>
+            All Sports
+          </button>
+          {sports.map(s => (
+            <button key={s.sport_id} onClick={() => { setSelectedSport(s.sport_id); setSelectedLevel(''); setSelectedTournament(''); }} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors text-sm font-medium ${selectedSport === s.sport_id ? 'bg-emerald-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}>
+              {s.sport_name}
+            </button>
+          ))}
+        </div>
+
+        {/* Level Tabs */}
+        {selectedSport && (
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <button onClick={() => setSelectedLevel('')} className={`px-3 py-1 rounded-md whitespace-nowrap transition-colors text-xs font-medium uppercase tracking-wider ${selectedLevel === '' ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}>All Levels</button>
+            <button onClick={() => { setSelectedLevel('International'); setSelectedTournament(''); }} className={`px-3 py-1 rounded-md whitespace-nowrap transition-colors text-xs font-medium uppercase tracking-wider ${selectedLevel === 'International' ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}>International</button>
+            <button onClick={() => { setSelectedLevel('National'); setSelectedTournament(''); }} className={`px-3 py-1 rounded-md whitespace-nowrap transition-colors text-xs font-medium uppercase tracking-wider ${selectedLevel === 'National' ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}>National</button>
+            <button onClick={() => setSelectedLevel('Franchise')} className={`px-3 py-1 rounded-md whitespace-nowrap transition-colors text-xs font-medium uppercase tracking-wider ${selectedLevel === 'Franchise' ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}>Franchise</button>
+          </div>
+        )}
+
+        {/* League Pills (Only if Franchise is selected) */}
+        {selectedSport && selectedLevel === 'Franchise' && (
+          <div className="flex gap-2 flex-wrap pt-2 border-t border-white/10">
+            <button onClick={() => setSelectedTournament('')} className={`px-3 py-1 rounded-full border transition-colors text-xs font-medium ${selectedTournament === '' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'border-white/20 hover:border-white/40 text-gray-400'}`}>
+              All Leagues
+            </button>
+            {tournaments.filter(t => t.sport_id == selectedSport && t.tournament_level === 'Franchise').map(t => (
+              <button key={t.tournament_id} onClick={() => setSelectedTournament(t.tournament_id)} className={`px-3 py-1 rounded-full border transition-colors text-xs font-medium ${selectedTournament === t.tournament_id ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'border-white/20 hover:border-white/40 text-gray-400'}`}>
+                {t.tournament_name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {showForm && (
@@ -101,6 +165,32 @@ export default function Teams() {
               <label className="block text-sm font-medium text-gray-400 mb-1">Coach Name</label>
               <input type="text" value={formData.coach_name} onChange={e => setFormData({...formData, coach_name: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none" />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Sport</label>
+              <select value={formData.sport_id} onChange={e => setFormData({...formData, sport_id: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none text-white">
+                <option value="">Select Sport</option>
+                {sports.map(s => <option key={s.sport_id} value={s.sport_id}>{s.sport_name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Level</label>
+              <select value={formData.team_level} onChange={e => setFormData({...formData, team_level: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none text-white">
+                <option value="International">International</option>
+                <option value="National">National</option>
+                <option value="Franchise">Franchise</option>
+              </select>
+            </div>
+            {formData.team_level === 'Franchise' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">League</label>
+                <select value={formData.tournament_id} onChange={e => setFormData({...formData, tournament_id: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 outline-none text-white">
+                  <option value="">Select League</option>
+                  {tournaments.filter(t => t.tournament_level === 'Franchise' && (!formData.sport_id || t.sport_id == formData.sport_id)).map(t => 
+                    <option key={t.tournament_id} value={t.tournament_id}>{t.tournament_name}</option>
+                  )}
+                </select>
+              </div>
+            )}
             <div className="md:col-span-3 flex justify-end gap-3 mt-2">
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg border border-white/10 hover:bg-white/5 transition-colors">Cancel</button>
               <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors">Save</button>

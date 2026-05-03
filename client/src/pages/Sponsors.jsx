@@ -5,26 +5,38 @@ import { DollarSign, ShieldCheck, Plus, Trash2, Edit, Search } from 'lucide-reac
 export default function Sponsors() {
   const [sponsors, setSponsors] = useState([]);
   const [mediaRights, setMediaRights] = useState([]);
+  const [sports, setSports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSport, setSelectedSport] = useState('');
 
   // Form State
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ sponsor_id: null, sponsor_name: '', industry_type: '' });
+  const [formData, setFormData] = useState({ sponsor_id: null, sponsor_name: '', industry_type: '', sport_id: '' });
 
   useEffect(() => {
-    fetchData();
+    const fetchInitialData = async () => {
+      try {
+        const [rightsRes, sportsRes] = await Promise.all([
+          api.get('/media-rights'),
+          api.get('/sports')
+        ]);
+        setMediaRights(rightsRes.data);
+        setSports(sportsRes.data);
+      } catch (err) { console.error(err); }
+    };
+    fetchInitialData();
   }, []);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    fetchSponsors();
+  }, [selectedSport]);
+
+  const fetchSponsors = async () => {
     setLoading(true);
     try {
-      const [sponsorsRes, rightsRes] = await Promise.all([
-        api.get('/sponsors'),
-        api.get('/media-rights')
-      ]);
-      setSponsors(sponsorsRes.data);
-      setMediaRights(rightsRes.data);
+      const res = await api.get(`/sponsors${selectedSport ? `?sport_id=${selectedSport}` : ''}`);
+      setSponsors(res.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -41,8 +53,8 @@ export default function Sponsors() {
         await api.post('/sponsors', formData);
       }
       setShowForm(false);
-      setFormData({ sponsor_id: null, sponsor_name: '', industry_type: '' });
-      fetchData();
+      setFormData({ sponsor_id: null, sponsor_name: '', industry_type: '', sport_id: '' });
+      fetchSponsors();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || 'Error saving sponsor');
@@ -53,7 +65,7 @@ export default function Sponsors() {
     if (!window.confirm('Are you sure you want to delete this sponsor?')) return;
     try {
       await api.delete(`/sponsors/${id}`);
-      fetchData();
+      fetchSponsors();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || 'Error deleting sponsor');
@@ -83,6 +95,25 @@ export default function Sponsors() {
         </div>
       </div>
 
+      {/* Sport Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <button
+          onClick={() => setSelectedSport('')}
+          className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium ${selectedSport === '' ? 'bg-emerald-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+        >
+          All Sports
+        </button>
+        {sports.map(s => (
+          <button
+            key={s.sport_id}
+            onClick={() => setSelectedSport(s.sport_id)}
+            className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium ${selectedSport === s.sport_id ? 'bg-emerald-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+          >
+            {s.sport_name}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Sponsors List */}
         <div className="glass rounded-2xl p-6">
@@ -92,7 +123,7 @@ export default function Sponsors() {
               <h2 className="text-xl font-bold">Corporate Sponsors</h2>
             </div>
             <button 
-              onClick={() => { setShowForm(true); setFormData({ sponsor_id: null, sponsor_name: '', industry_type: '' }); }}
+              onClick={() => { setShowForm(true); setFormData({ sponsor_id: null, sponsor_name: '', industry_type: '', sport_id: selectedSport }); }}
               className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg flex items-center text-sm transition-colors"
             >
               <Plus className="h-4 w-4 mr-1" />
@@ -109,6 +140,12 @@ export default function Sponsors() {
                 </div>
                 <div>
                   <input type="text" value={formData.industry_type} onChange={e => setFormData({...formData, industry_type: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-emerald-500 outline-none" placeholder="Industry Type (e.g. Gaming)" />
+                </div>
+                <div>
+                  <select value={formData.sport_id} onChange={e => setFormData({...formData, sport_id: e.target.value})} className="w-full bg-surface border border-white/10 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-emerald-500 outline-none text-white">
+                    <option value="">Any Sport</option>
+                    {sports.map(s => <option key={s.sport_id} value={s.sport_id}>{s.sport_name}</option>)}
+                  </select>
                 </div>
                 <div className="flex justify-end gap-2">
                   <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 text-sm rounded bg-white/5 hover:bg-white/10">Cancel</button>

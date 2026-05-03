@@ -6,30 +6,35 @@ const auth = require('../middleware/auth');
 // GET all sponsors
 router.get('/', auth, async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM SPONSOR ORDER BY sponsor_id DESC');
+    const { sport_id } = req.query;
+    let query = 'SELECT * FROM SPONSOR WHERE 1=1';
+    const params = [];
+    if (sport_id) { query += ' AND sport_id = ?'; params.push(sport_id); }
+    query += ' ORDER BY sponsor_id DESC';
+    const [rows] = await pool.query(query, params);
     res.json(rows);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // POST sponsor
 router.post('/', auth, async (req, res) => {
-  const { sponsor_name, industry_type } = req.body;
+  const { sponsor_name, industry_type, sport_id } = req.body;
   try {
     const [result] = await pool.query(
-      'INSERT INTO SPONSOR (sponsor_name, industry_type) VALUES (?, ?)',
-      [sponsor_name, industry_type]
+      'INSERT INTO SPONSOR (sponsor_name, industry_type, sport_id) VALUES (?, ?, ?)',
+      [sponsor_name, industry_type, sport_id || null]
     );
-    res.status(201).json({ sponsor_id: result.insertId, sponsor_name, industry_type });
+    res.status(201).json({ sponsor_id: result.insertId, sponsor_name, industry_type, sport_id });
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // PUT sponsor
 router.put('/:id', auth, async (req, res) => {
-  const { sponsor_name, industry_type } = req.body;
+  const { sponsor_name, industry_type, sport_id } = req.body;
   try {
     await pool.query(
-      'UPDATE SPONSOR SET sponsor_name=?, industry_type=? WHERE sponsor_id=?',
-      [sponsor_name, industry_type, req.params.id]
+      'UPDATE SPONSOR SET sponsor_name=?, industry_type=?, sport_id=? WHERE sponsor_id=?',
+      [sponsor_name, industry_type, sport_id || null, req.params.id]
     );
     res.json({ message: 'Sponsor updated' });
   } catch (err) { res.status(500).json({ message: err.message }); }

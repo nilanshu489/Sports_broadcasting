@@ -7,8 +7,15 @@ export default function Matches() {
   const [stadiums, setStadiums] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [broadcasters, setBroadcasters] = useState([]);
+  const [sports, setSports] = useState([]);
+  const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Filter States
+  const [selectedSport, setSelectedSport] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState(''); // 'International', 'National', 'Franchise'
+  const [selectedTournament, setSelectedTournament] = useState('');
   
   // Form State
   const [showForm, setShowForm] = useState(false);
@@ -18,22 +25,38 @@ export default function Matches() {
   });
 
   useEffect(() => {
-    fetchData();
+    const fetchInitialData = async () => {
+      try {
+        const [stadiumsRes, seasonsRes, broadcastersRes, sportsRes, tourneysRes] = await Promise.all([
+          api.get('/stadiums'),
+          api.get('/seasons'),
+          api.get('/broadcasters'),
+          api.get('/sports'),
+          api.get('/tournaments')
+        ]);
+        setStadiums(stadiumsRes.data);
+        setSeasons(seasonsRes.data);
+        setBroadcasters(broadcastersRes.data);
+        setSports(sportsRes.data);
+        setTournaments(tourneysRes.data);
+      } catch (err) { console.error(err); }
+    };
+    fetchInitialData();
   }, []);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    fetchMatches();
+  }, [selectedSport, selectedLevel, selectedTournament]);
+
+  const fetchMatches = async () => {
     setLoading(true);
     try {
-      const [matchesRes, stadiumsRes, seasonsRes, broadcastersRes] = await Promise.all([
-        api.get('/matches'),
-        api.get('/stadiums'),
-        api.get('/seasons'),
-        api.get('/broadcasters')
-      ]);
-      setMatches(matchesRes.data);
-      setStadiums(stadiumsRes.data);
-      setSeasons(seasonsRes.data);
-      setBroadcasters(broadcastersRes.data);
+      let url = '/matches?';
+      if (selectedSport) url += `sport_id=${selectedSport}&`;
+      if (selectedLevel) url += `level=${selectedLevel}&`;
+      if (selectedLevel === 'Franchise' && selectedTournament) url += `tournament_id=${selectedTournament}`;
+      const res = await api.get(url);
+      setMatches(res.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -52,7 +75,7 @@ export default function Matches() {
       }
       setShowForm(false);
       resetForm();
-      fetchData();
+      fetchMatches();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || 'Error saving match');
@@ -63,7 +86,7 @@ export default function Matches() {
     if (!window.confirm('Are you sure you want to delete this match?')) return;
     try {
       await api.delete(`/matches/${id}`);
-      fetchData();
+      fetchMatches();
     } catch (err) {
       console.error(err);
     }
@@ -103,6 +126,45 @@ export default function Matches() {
             Create Match
           </button>
         </div>
+      </div>
+
+      {/* Filters Hierarchy */}
+      <div className="space-y-4 bg-white/5 p-4 rounded-xl border border-white/10">
+        {/* Sport Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <button onClick={() => setSelectedSport('')} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors text-sm font-medium ${selectedSport === '' ? 'bg-amber-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}>
+            All Sports
+          </button>
+          {sports.map(s => (
+            <button key={s.sport_id} onClick={() => { setSelectedSport(s.sport_id); setSelectedLevel(''); setSelectedTournament(''); }} className={`px-4 py-1.5 rounded-full whitespace-nowrap transition-colors text-sm font-medium ${selectedSport === s.sport_id ? 'bg-amber-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}>
+              {s.sport_name}
+            </button>
+          ))}
+        </div>
+
+        {/* Level Tabs */}
+        {selectedSport && (
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <button onClick={() => setSelectedLevel('')} className={`px-3 py-1 rounded-md whitespace-nowrap transition-colors text-xs font-medium uppercase tracking-wider ${selectedLevel === '' ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}>All Levels</button>
+            <button onClick={() => { setSelectedLevel('International'); setSelectedTournament(''); }} className={`px-3 py-1 rounded-md whitespace-nowrap transition-colors text-xs font-medium uppercase tracking-wider ${selectedLevel === 'International' ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}>International</button>
+            <button onClick={() => { setSelectedLevel('National'); setSelectedTournament(''); }} className={`px-3 py-1 rounded-md whitespace-nowrap transition-colors text-xs font-medium uppercase tracking-wider ${selectedLevel === 'National' ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}>National</button>
+            <button onClick={() => setSelectedLevel('Franchise')} className={`px-3 py-1 rounded-md whitespace-nowrap transition-colors text-xs font-medium uppercase tracking-wider ${selectedLevel === 'Franchise' ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}>Franchise</button>
+          </div>
+        )}
+
+        {/* League Pills (Only if Franchise is selected) */}
+        {selectedSport && selectedLevel === 'Franchise' && (
+          <div className="flex gap-2 flex-wrap pt-2 border-t border-white/10">
+            <button onClick={() => setSelectedTournament('')} className={`px-3 py-1 rounded-full border transition-colors text-xs font-medium ${selectedTournament === '' ? 'bg-amber-500/20 border-amber-500 text-amber-400' : 'border-white/20 hover:border-white/40 text-gray-400'}`}>
+              All Leagues
+            </button>
+            {tournaments.filter(t => t.sport_id == selectedSport && t.tournament_level === 'Franchise').map(t => (
+              <button key={t.tournament_id} onClick={() => setSelectedTournament(t.tournament_id)} className={`px-3 py-1 rounded-full border transition-colors text-xs font-medium ${selectedTournament === t.tournament_id ? 'bg-amber-500/20 border-amber-500 text-amber-400' : 'border-white/20 hover:border-white/40 text-gray-400'}`}>
+                {t.tournament_name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {showForm && (

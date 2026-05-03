@@ -5,6 +5,9 @@
 CREATE DATABASE IF NOT EXISTS sports_broadcasting;
 USE sports_broadcasting;
 
+-- Drop all tables to reset schema
+DROP TABLE IF EXISTS ADMIN, SPONSOR_TOURNAMENT, PLAYER_TEAM, BROADCAST_SCHEDULE, MEDIA_RIGHTS, SPONSOR, COMMENTATOR, PRODUCTION_CREW, CHANNEL, BROADCASTER, CAMERA, MATCHES, STADIUM, PLAYER, TEAM, SEASON, TOURNAMENT, SPORT;
+
 -- ============================================================
 -- 1. SPORT
 -- ============================================================
@@ -18,10 +21,11 @@ CREATE TABLE IF NOT EXISTS SPORT (
 -- 2. TOURNAMENT
 -- ============================================================
 CREATE TABLE IF NOT EXISTS TOURNAMENT (
-  tournament_id   INT AUTO_INCREMENT PRIMARY KEY,
-  tournament_name VARCHAR(150) NOT NULL,
-  host_country    VARCHAR(100),
-  sport_id        INT,
+  tournament_id    INT AUTO_INCREMENT PRIMARY KEY,
+  tournament_name  VARCHAR(150) NOT NULL,
+  host_country     VARCHAR(100),
+  tournament_level VARCHAR(50) DEFAULT 'Franchise', -- 'International', 'National', 'Franchise'
+  sport_id         INT,
   FOREIGN KEY (sport_id) REFERENCES SPORT(sport_id) ON DELETE SET NULL
 );
 
@@ -41,10 +45,15 @@ CREATE TABLE IF NOT EXISTS SEASON (
 -- 4. TEAM
 -- ============================================================
 CREATE TABLE IF NOT EXISTS TEAM (
-  team_id    INT AUTO_INCREMENT PRIMARY KEY,
-  team_name  VARCHAR(100) NOT NULL,
-  home_city  VARCHAR(100),
-  coach_name VARCHAR(100)
+  team_id       INT AUTO_INCREMENT PRIMARY KEY,
+  team_name     VARCHAR(100) NOT NULL,
+  home_city     VARCHAR(100),
+  coach_name    VARCHAR(100),
+  sport_id      INT,
+  team_level    VARCHAR(50) DEFAULT 'Franchise', -- 'International', 'National', 'Franchise'
+  tournament_id INT, -- For Franchise teams to link to their primary league
+  FOREIGN KEY (sport_id) REFERENCES SPORT(sport_id) ON DELETE SET NULL,
+  FOREIGN KEY (tournament_id) REFERENCES TOURNAMENT(tournament_id) ON DELETE SET NULL
 );
 
 -- ============================================================
@@ -55,8 +64,19 @@ CREATE TABLE IF NOT EXISTS PLAYER (
   player_name VARCHAR(100) NOT NULL,
   role        VARCHAR(50),
   nationality VARCHAR(100),
-  team_id     INT,
-  FOREIGN KEY (team_id) REFERENCES TEAM(team_id) ON DELETE SET NULL
+  sport_id    INT,
+  FOREIGN KEY (sport_id) REFERENCES SPORT(sport_id) ON DELETE SET NULL
+);
+
+-- ============================================================
+-- 5.1 PLAYER_TEAM (Junction Table)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS PLAYER_TEAM (
+  player_id INT,
+  team_id   INT,
+  PRIMARY KEY (player_id, team_id),
+  FOREIGN KEY (player_id) REFERENCES PLAYER(player_id) ON DELETE CASCADE,
+  FOREIGN KEY (team_id)   REFERENCES TEAM(team_id)     ON DELETE CASCADE
 );
 
 -- ============================================================
@@ -66,7 +86,9 @@ CREATE TABLE IF NOT EXISTS STADIUM (
   stadium_id   INT AUTO_INCREMENT PRIMARY KEY,
   stadium_name VARCHAR(150) NOT NULL,
   city         VARCHAR(100),
-  capacity     INT
+  capacity     INT,
+  sport_id     INT,
+  FOREIGN KEY (sport_id) REFERENCES SPORT(sport_id) ON DELETE SET NULL
 );
 
 -- ============================================================
@@ -101,7 +123,9 @@ CREATE TABLE IF NOT EXISTS BROADCASTER (
   broadcaster_id   INT AUTO_INCREMENT PRIMARY KEY,
   broadcaster_name VARCHAR(150) NOT NULL,
   country          VARCHAR(100),
-  contact_email    VARCHAR(150)
+  contact_email    VARCHAR(150),
+  sport_id         INT,
+  FOREIGN KEY (sport_id) REFERENCES SPORT(sport_id) ON DELETE SET NULL
 );
 
 -- ============================================================
@@ -143,7 +167,9 @@ CREATE TABLE IF NOT EXISTS COMMENTATOR (
 CREATE TABLE IF NOT EXISTS SPONSOR (
   sponsor_id    INT AUTO_INCREMENT PRIMARY KEY,
   sponsor_name  VARCHAR(150) NOT NULL,
-  industry_type VARCHAR(100)
+  industry_type VARCHAR(100),
+  sport_id      INT,
+  FOREIGN KEY (sport_id) REFERENCES SPORT(sport_id) ON DELETE SET NULL
 );
 
 -- ============================================================
