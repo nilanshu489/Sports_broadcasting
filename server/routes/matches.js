@@ -13,13 +13,13 @@ router.get('/', auth, async (req, res) => {
              se.season_year, se.tournament_id,
              t.tournament_name, t.tournament_level, t.sport_id,
              ht.team_name as home_team_name,
-             at.team_name as away_team_name
+             awt.team_name as away_team_name
       FROM MATCHES m
       LEFT JOIN STADIUM s  ON m.stadium_id  = s.stadium_id
       LEFT JOIN SEASON  se ON m.season_id   = se.season_id
       LEFT JOIN TOURNAMENT t ON se.tournament_id = t.tournament_id
       LEFT JOIN TEAM ht ON m.home_team_id = ht.team_id
-      LEFT JOIN TEAM at ON m.away_team_id = at.team_id
+      LEFT JOIN TEAM awt ON m.away_team_id = awt.team_id
       WHERE 1=1
     `;
     const params = [];

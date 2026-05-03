@@ -12,36 +12,44 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const username = localStorage.getItem('username');
+    const role = localStorage.getItem('role');
     if (token && username) {
-      setUser({ username, token });
+      setUser({ username, token, role: role || 'user' });
     }
     setLoading(false);
   }, []);
 
   const login = async (username, password) => {
-    try {
-      const res = await api.post('/auth/login', { username, password });
-      const { token, username: returnedUsername } = res.data;
-      
-      localStorage.setItem('token', token);
-      localStorage.setItem('username', returnedUsername);
-      setUser({ username: returnedUsername, token });
-    } catch (err) {
-      throw new Error(err.response?.data?.message || 'Login failed');
-    }
+    const res = await api.post('/auth/login', { username, password });
+    const { token, username: returnedUsername, role } = res.data;
+    
+    localStorage.setItem('token', token);
+    localStorage.setItem('username', returnedUsername);
+    localStorage.setItem('role', role);
+    setUser({ username: returnedUsername, token, role });
   };
 
+  const signup = async (username, email, password) => {
+    const res = await api.post('/auth/signup', { username, email, password });
+    const { token, username: returnedUsername, role } = res.data;
+
+    localStorage.setItem('token', token);
+    localStorage.setItem('username', returnedUsername);
+    localStorage.setItem('role', role);
+    setUser({ username: returnedUsername, token, role });
+  };
 
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('role');
     setUser(null);
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-background text-white">Loading...</div>;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );

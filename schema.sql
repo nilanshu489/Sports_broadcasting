@@ -103,7 +103,8 @@ CREATE TABLE IF NOT EXISTS MATCHES (
   away_team_id INT,
   home_score   INT DEFAULT 0,
   away_score   INT DEFAULT 0,
-  stream_url   VARCHAR(255),
+  stream_url   VARCHAR(500),
+  highlight_url VARCHAR(500),
   season_id    INT,
   stadium_id   INT,
   FOREIGN KEY (home_team_id) REFERENCES TEAM(team_id) ON DELETE SET NULL,
@@ -222,4 +223,16 @@ CREATE TABLE IF NOT EXISTS ADMIN (
   admin_id       INT AUTO_INCREMENT PRIMARY KEY,
   username       VARCHAR(50)  NOT NULL UNIQUE,
   password_hash  VARCHAR(255) NOT NULL
+);
+
+-- ============================================================
+-- 18. APP_USER (for user sign-up / login)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS APP_USER (
+  user_id        INT AUTO_INCREMENT PRIMARY KEY,
+  username       VARCHAR(50)  NOT NULL UNIQUE,
+  email          VARCHAR(150) NOT NULL UNIQUE,
+  password_hash  VARCHAR(255) NOT NULL,
+  role           ENUM('user', 'admin') DEFAULT 'user',
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

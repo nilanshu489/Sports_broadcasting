@@ -280,11 +280,24 @@ export default function Matches() {
                         }`}>
                           {match.match_status}
                         </span>
-                        {match.stream_url && (match.match_status === 'Live' || match.match_status === 'Scheduled') && (
+                        {/* LIVE → Watch Live button */}
+                        {match.match_status === 'Live' && match.stream_url && (
                           <a href={match.stream_url} target="_blank" rel="noreferrer" className="flex items-center text-xs bg-red-600/20 text-red-400 border border-red-500/30 px-2 py-1 rounded hover:bg-red-600/40 transition">
-                            <span className="w-2 h-2 rounded-full bg-red-500 mr-1 animate-pulse"></span>
+                            <span className="w-2 h-2 rounded-full bg-red-500 mr-1.5 animate-pulse"></span>
                             Watch Live
                           </a>
+                        )}
+                        {/* COMPLETED → Watch Highlights button */}
+                        {match.match_status === 'Completed' && match.highlight_url && (
+                          <a href={match.highlight_url} target="_blank" rel="noreferrer" className="flex items-center text-xs bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2.5 py-1 rounded hover:bg-blue-600/40 transition">
+                            ▶ Watch Highlights
+                          </a>
+                        )}
+                        {/* SCHEDULED → just show kickoff time, no button */}
+                        {match.match_status === 'Scheduled' && (
+                          <span className="text-xs text-gray-500">
+                            Starts {match.start_time?.substring(0, 5)} IST
+                          </span>
                         )}
                       </div>
                     </td>

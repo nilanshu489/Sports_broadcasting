@@ -47,12 +47,32 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
 
 // ==========================================
-// Live Score Simulator
+// Auto Match Status Updater (Scheduled → Live)
 // ==========================================
-// Randomly increments scores for matches that are currently 'Live' every 5 seconds.
+// Every 30 seconds, check if any 'Scheduled' match's date+time has arrived.
+// If so, automatically update its status to 'Live'.
 setInterval(async () => {
   try {
-    // Increment score by 0, 1, or 2 randomly for live matches
+    const [result] = await pool.query(`
+      UPDATE MATCHES 
+      SET match_status = 'Live' 
+      WHERE match_status = 'Scheduled' 
+        AND CONCAT(match_date, ' ', start_time) <= NOW()
+    `);
+    if (result.affectedRows > 0) {
+      console.log(`🔴 ${result.affectedRows} match(es) went LIVE automatically!`);
+    }
+  } catch (err) {
+    console.error('Auto Status Update Error:', err.message);
+  }
+}, 30000); // Check every 30 seconds
+
+// ==========================================
+// Live Score Simulator (for demo purposes)
+// ==========================================
+// Randomly increments scores for matches that are currently 'Live' every 15 seconds.
+setInterval(async () => {
+  try {
     await pool.query(`
       UPDATE MATCHES 
       SET home_score = home_score + FLOOR(RAND() * 3), 
@@ -62,4 +82,4 @@ setInterval(async () => {
   } catch (err) {
     console.error('Live Simulator Error:', err.message);
   }
-}, 5000);
+}, 15000);

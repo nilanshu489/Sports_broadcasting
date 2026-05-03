@@ -75,7 +75,13 @@ export default function Sidebar({ isOpen, setIsOpen }) {
             </div>
             <div>
               <p className="text-sm font-medium">{user?.username}</p>
-              <p className="text-xs text-gray-400">Admin</p>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                user?.role === 'admin' 
+                  ? 'bg-amber-500/20 text-amber-400' 
+                  : 'bg-blue-500/20 text-blue-400'
+              }`}>
+                {user?.role === 'admin' ? 'Admin' : 'User'}
+              </span>
             </div>
           </div>
           <button 
