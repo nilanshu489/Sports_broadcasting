@@ -44,12 +44,8 @@ export default function Matches() {
     fetchInitialData();
   }, []);
 
-  useEffect(() => {
-    fetchMatches();
-  }, [selectedSport, selectedLevel, selectedTournament]);
-
-  const fetchMatches = async () => {
-    setLoading(true);
+  const fetchMatches = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       let url = '/matches?';
       if (selectedSport) url += `sport_id=${selectedSport}&`;
@@ -60,9 +56,18 @@ export default function Matches() {
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchMatches();
+    // Live Score Polling
+    const interval = setInterval(() => {
+      fetchMatches(false); // pass false to avoid loading flicker
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedSport, selectedLevel, selectedTournament]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -234,9 +239,10 @@ export default function Matches() {
               <thead>
                 <tr className="border-b border-white/10 text-gray-400 text-sm">
                   <th className="py-3 px-4 font-medium">Date & Time</th>
+                  <th className="py-3 px-4 font-medium">Matchup (Live Scores)</th>
                   <th className="py-3 px-4 font-medium">Tournament</th>
                   <th className="py-3 px-4 font-medium">Stadium</th>
-                  <th className="py-3 px-4 font-medium">Status</th>
+                  <th className="py-3 px-4 font-medium">Status & Link</th>
                   <th className="py-3 px-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -248,18 +254,39 @@ export default function Matches() {
                       <div className="text-xs text-gray-400">{match.start_time}</div>
                     </td>
                     <td className="py-3 px-4">
+                      {match.home_team_name ? (
+                        <div className="font-bold flex items-center gap-2">
+                          <span className="text-right w-24 truncate" title={match.home_team_name}>{match.home_team_name}</span>
+                          <span className="bg-white/10 px-2 py-1 rounded text-amber-400 text-sm">{match.home_score}</span>
+                          <span className="text-gray-500 text-sm">-</span>
+                          <span className="bg-white/10 px-2 py-1 rounded text-amber-400 text-sm">{match.away_score}</span>
+                          <span className="text-left w-24 truncate" title={match.away_team_name}>{match.away_team_name}</span>
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 italic text-sm">Teams TBD</div>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
                       <div className="font-medium">{match.tournament_name || 'No Tournament'}</div>
                       <div className="text-xs text-gray-400">{match.season_year}</div>
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-300">{match.stadium_name || 'TBA'}</td>
                     <td className="py-3 px-4 text-sm">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        match.match_status === 'Scheduled' ? 'bg-amber-400/20 text-amber-400' :
-                        match.match_status === 'Live' ? 'bg-emerald-400/20 text-emerald-400' :
-                        'bg-gray-400/20 text-gray-400'
-                      }`}>
-                        {match.match_status}
-                      </span>
+                      <div className="flex flex-col items-start gap-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          match.match_status === 'Scheduled' ? 'bg-amber-400/20 text-amber-400' :
+                          match.match_status === 'Live' ? 'bg-emerald-400/20 text-emerald-400 animate-pulse' :
+                          'bg-gray-400/20 text-gray-400'
+                        }`}>
+                          {match.match_status}
+                        </span>
+                        {match.stream_url && (match.match_status === 'Live' || match.match_status === 'Scheduled') && (
+                          <a href={match.stream_url} target="_blank" rel="noreferrer" className="flex items-center text-xs bg-red-600/20 text-red-400 border border-red-500/30 px-2 py-1 rounded hover:bg-red-600/40 transition">
+                            <span className="w-2 h-2 rounded-full bg-red-500 mr-1 animate-pulse"></span>
+                            Watch Live
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 flex justify-end gap-2">
                       <button onClick={() => { setFormData({...match, match_date: match.match_date.substring(0,10), season_id: match.season_id || '', stadium_id: match.stadium_id || ''}); setShowForm(true); }} className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors" title="Edit (Uses SELECT FOR UPDATE concurrency control)">

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const pool = require('./config/db');
 require('dotenv').config();
 
 const app = express();
@@ -45,3 +46,20 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Dat
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
 
+// ==========================================
+// Live Score Simulator
+// ==========================================
+// Randomly increments scores for matches that are currently 'Live' every 5 seconds.
+setInterval(async () => {
+  try {
+    // Increment score by 0, 1, or 2 randomly for live matches
+    await pool.query(`
+      UPDATE MATCHES 
+      SET home_score = home_score + FLOOR(RAND() * 3), 
+          away_score = away_score + FLOOR(RAND() * 3) 
+      WHERE match_status = 'Live'
+    `);
+  } catch (err) {
+    console.error('Live Simulator Error:', err.message);
+  }
+}, 5000);

@@ -99,10 +99,17 @@ CREATE TABLE IF NOT EXISTS MATCHES (
   match_date   DATE,
   start_time   TIME,
   match_status VARCHAR(50) DEFAULT 'Scheduled',
+  home_team_id INT,
+  away_team_id INT,
+  home_score   INT DEFAULT 0,
+  away_score   INT DEFAULT 0,
+  stream_url   VARCHAR(255),
   season_id    INT,
   stadium_id   INT,
-  FOREIGN KEY (season_id)  REFERENCES SEASON(season_id)   ON DELETE SET NULL,
-  FOREIGN KEY (stadium_id) REFERENCES STADIUM(stadium_id) ON DELETE SET NULL
+  FOREIGN KEY (home_team_id) REFERENCES TEAM(team_id) ON DELETE SET NULL,
+  FOREIGN KEY (away_team_id) REFERENCES TEAM(team_id) ON DELETE SET NULL,
+  FOREIGN KEY (season_id)    REFERENCES SEASON(season_id)   ON DELETE SET NULL,
+  FOREIGN KEY (stadium_id)   REFERENCES STADIUM(stadium_id) ON DELETE SET NULL
 );
 
 -- ============================================================

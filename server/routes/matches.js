@@ -3,7 +3,7 @@ const router = express.Router();
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
 
-// GET /api/matches — JOIN with STADIUM and SEASON
+// GET /api/matches — JOIN with STADIUM, SEASON, and TEAM (Home & Away)
 router.get('/', auth, async (req, res) => {
   try {
     const { sport_id, level, tournament_id } = req.query;
@@ -11,11 +11,15 @@ router.get('/', auth, async (req, res) => {
       SELECT m.*,
              s.stadium_name, s.city AS stadium_city,
              se.season_year, se.tournament_id,
-             t.tournament_name, t.tournament_level, t.sport_id
+             t.tournament_name, t.tournament_level, t.sport_id,
+             ht.team_name as home_team_name,
+             at.team_name as away_team_name
       FROM MATCHES m
       LEFT JOIN STADIUM s  ON m.stadium_id  = s.stadium_id
       LEFT JOIN SEASON  se ON m.season_id   = se.season_id
       LEFT JOIN TOURNAMENT t ON se.tournament_id = t.tournament_id
+      LEFT JOIN TEAM ht ON m.home_team_id = ht.team_id
+      LEFT JOIN TEAM at ON m.away_team_id = at.team_id
       WHERE 1=1
     `;
     const params = [];
@@ -23,7 +27,7 @@ router.get('/', auth, async (req, res) => {
     if (level) { query += ' AND t.tournament_level = ?'; params.push(level); }
     if (tournament_id) { query += ' AND t.tournament_id = ?'; params.push(tournament_id); }
     
-    query += ' ORDER BY m.match_date DESC';
+    query += ' ORDER BY m.match_date DESC, m.start_time DESC';
     const [rows] = await pool.query(query, params);
     res.json(rows);
   } catch (err) { res.status(500).json({ message: err.message }); }
@@ -31,15 +35,15 @@ router.get('/', auth, async (req, res) => {
 
 // POST /api/matches — uses TRANSACTION to also create broadcast_schedule slot
 router.post('/', auth, async (req, res) => {
-  const { match_date, start_time, match_status, season_id, stadium_id, broadcaster_id, end_time } = req.body;
+  const { match_date, start_time, match_status, home_team_id, away_team_id, home_score, away_score, stream_url, season_id, stadium_id, broadcaster_id, end_time } = req.body;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
     // Insert match
     const [matchResult] = await conn.query(
-      'INSERT INTO MATCHES (match_date, start_time, match_status, season_id, stadium_id) VALUES (?, ?, ?, ?, ?)',
-      [match_date, start_time, match_status || 'Scheduled', season_id || null, stadium_id || null]
+      'INSERT INTO MATCHES (match_date, start_time, match_status, home_team_id, away_team_id, home_score, away_score, stream_url, season_id, stadium_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [match_date, start_time, match_status || 'Scheduled', home_team_id || null, away_team_id || null, home_score || 0, away_score || 0, stream_url || null, season_id || null, stadium_id || null]
     );
     const match_id = matchResult.insertId;
 
@@ -63,15 +67,15 @@ router.post('/', auth, async (req, res) => {
 
 // PUT /api/matches/:id — uses SELECT FOR UPDATE for concurrency control
 router.put('/:id', auth, async (req, res) => {
-  const { match_date, start_time, match_status, season_id, stadium_id } = req.body;
+  const { match_date, start_time, match_status, home_team_id, away_team_id, home_score, away_score, stream_url, season_id, stadium_id } = req.body;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     // Lock row to prevent concurrent updates
     await conn.query('SELECT match_id FROM MATCHES WHERE match_id = ? FOR UPDATE', [req.params.id]);
     await conn.query(
-      'UPDATE MATCHES SET match_date=?, start_time=?, match_status=?, season_id=?, stadium_id=? WHERE match_id=?',
-      [match_date, start_time, match_status, season_id || null, stadium_id || null, req.params.id]
+      'UPDATE MATCHES SET match_date=?, start_time=?, match_status=?, home_team_id=?, away_team_id=?, home_score=?, away_score=?, stream_url=?, season_id=?, stadium_id=? WHERE match_id=?',
+      [match_date, start_time, match_status, home_team_id || null, away_team_id || null, home_score || 0, away_score || 0, stream_url || null, season_id || null, stadium_id || null, req.params.id]
     );
     await conn.commit();
     res.json({ message: 'Match updated' });

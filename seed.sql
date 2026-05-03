@@ -45,7 +45,10 @@ INSERT IGNORE INTO SEASON (season_id, season_year, start_date, end_date, tournam
 (2, 2024, '2024-08-16', '2025-05-25', 8), -- EPL
 (3, 2024, '2024-08-15', '2025-05-25', 9), -- La Liga
 (4, 2024, '2024-10-24', '2025-04-14', 12), -- NBA
-(5, 2024, '2024-03-28', '2024-09-29', 15); -- MLB
+(5, 2024, '2024-03-28', '2024-09-29', 15), -- MLB
+(6, 2023, '2023-10-05', '2023-11-19', 1), -- ICC World Cup 2023
+(7, 2022, '2022-11-20', '2022-12-18', 6), -- FIFA World Cup 2022
+(8, 2024, '2024-06-01', '2024-06-29', 2); -- ICC T20 World Cup 2024
 
 -- ==========================================
 -- 4. TEAMS
@@ -136,13 +139,13 @@ INSERT IGNORE INTO STADIUM (stadium_id, stadium_name, city, capacity, sport_id) 
 -- ==========================================
 -- 7. MATCHES
 -- ==========================================
-INSERT IGNORE INTO MATCHES (match_id, match_date, start_time, match_status, season_id, stadium_id) VALUES 
-(1, '2024-04-10', '19:30:00', 'Completed', 1, 1), -- IPL MI vs CSK
-(2, '2024-04-15', '19:30:00', 'Scheduled', 1, 3), -- IPL RCB vs MI
-(3, '2024-10-25', '21:00:00', 'Scheduled', 3, 5), -- La Liga El Clasico
-(4, '2024-11-05', '17:30:00', 'Scheduled', 2, 7), -- EPL Man City vs Arsenal
-(5, '2024-12-25', '20:00:00', 'Scheduled', 4, 9), -- NBA Lakers vs Warriors
-(6, '2024-06-15', '19:00:00', 'Completed', 5, 12); -- MLB Yankees vs Dodgers
+INSERT IGNORE INTO MATCHES (match_id, match_date, start_time, match_status, home_team_id, away_team_id, home_score, away_score, stream_url, season_id, stadium_id) VALUES 
+(1, '2024-04-10', '19:30:00', 'Completed', 4, 5, 185, 160, 'https://jiocinema.com', 1, 1), -- IPL MI vs CSK
+(2, '2024-04-15', '19:30:00', 'Live', 6, 4, 120, 115, 'https://jiocinema.com', 1, 3), -- IPL RCB vs MI
+(3, '2024-10-25', '21:00:00', 'Live', 10, 11, 2, 1, 'https://espn.com', 3, 5), -- La Liga El Clasico
+(4, '2024-11-05', '17:30:00', 'Scheduled', 12, 13, 0, 0, 'https://skysports.com', 2, 7), -- EPL Man City vs Arsenal
+(5, '2024-12-25', '20:00:00', 'Live', 16, 17, 85, 90, 'https://tntsports.com', 4, 9), -- NBA Lakers vs Warriors
+(6, '2024-06-15', '19:00:00', 'Completed', 19, 20, 5, 3, 'https://foxsports.com', 5, 12); -- MLB Yankees vs Dodgers
 
 -- ==========================================
 -- 8. BROADCASTERS
@@ -197,7 +200,7 @@ INSERT IGNORE INTO TEAM (team_id, team_name, home_city, coach_name, sport_id, te
 (27, 'Delhi Capitals', 'New Delhi', 'Ricky Ponting', 1, 'Franchise', 4),
 (28, 'Liverpool', 'Liverpool', 'Jurgen Klopp', 2, 'Franchise', 8),
 (29, 'Chelsea', 'London', 'Mauricio Pochettino', 2, 'Franchise', 8),
-(30, 'Paris Saint-Germain', 'Paris', 'Luis Enrique', 2, 'Franchise', NULL),
+(30, 'Manchester United', 'Manchester', 'Erik ten Hag', 2, 'Franchise', 8),
 (31, 'Juventus', 'Turin', 'Massimiliano Allegri', 2, 'Franchise', 10),
 (32, 'Inter Milan', 'Milan', 'Simone Inzaghi', 2, 'Franchise', 10),
 (33, 'Germany', 'Berlin', 'Julian Nagelsmann', 2, 'International', NULL),
@@ -408,3 +411,17 @@ INSERT IGNORE INTO PLAYER_TEAM (player_id, team_id) VALUES
 -- Arshdeep Singh (India, Punjab Kings)
 (58, 1), (58, 44);
 
+-- ==========================================
+-- 13. MORE MATCHES
+-- ==========================================
+INSERT IGNORE INTO MATCHES (match_id, match_date, start_time, match_status, home_team_id, away_team_id, home_score, away_score, stream_url, season_id, stadium_id) VALUES 
+(7, '2024-05-20', '19:30:00', 'Scheduled', 24, 25, 0, 0, 'https://jiocinema.com', 1, 17), -- IPL: KKR vs SRH at Narendra Modi Stadium
+(8, '2024-05-26', '20:00:00', 'Scheduled', 4, 5, 0, 0, 'https://jiocinema.com', 1, 1), -- IPL Final: MI vs CSK at Wankhede
+(9, '2024-11-10', '16:00:00', 'Scheduled', 29, 28, 0, 0, 'https://skysports.com', 2, 8), -- EPL: Chelsea vs Liverpool at Emirates (London)
+(10, '2024-12-01', '21:00:00', 'Scheduled', 11, 10, 0, 0, 'https://espn.com', 3, 6), -- La Liga: Barcelona vs Real Madrid at Camp Nou
+(11, '2024-11-20', '18:30:00', 'Scheduled', 30, 13, 0, 0, 'https://skysports.com', 2, 22), -- EPL: Man Utd vs Arsenal at Wembley
+(12, '2025-01-15', '20:30:00', 'Scheduled', 36, 37, 0, 0, 'https://tntsports.com', 4, 23), -- NBA: Bulls vs Knicks at United Center
+(13, '2025-02-14', '19:00:00', 'Scheduled', 38, 39, 0, 0, 'https://espn.com', 4, 25), -- NBA: Mavericks vs Nuggets at AA Center
+(14, '2025-04-01', '13:00:00', 'Live', 40, 41, 2, 4, 'https://foxsports.com', 5, 26), -- MLB: Astros vs Rangers at Minute Maid Park
+(15, '2025-05-10', '19:00:00', 'Scheduled', 42, 43, 0, 0, 'https://foxsports.com', 5, 27), -- MLB: Braves vs Phillies at Truist Park
+(16, '2023-10-14', '14:00:00', 'Completed', 1, 21, 280, 270, 'https://hotstar.com', 6, 17); -- ICC World Cup: India vs Pakistan at Narendra Modi Stadium
